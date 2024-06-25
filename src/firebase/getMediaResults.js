@@ -116,9 +116,53 @@ const getMostCommonWords = async () => {
 		return [];
 	}	
 }
+
+const getWordByDate = async (word, startDate, endDate) => {
+
+	const q = query(mediaResultsRef, where('topicWords.0', 'array-contains', word),
+									where('creationTime', '>=', '2020-01-01T00:00:00Z'),
+									where('creationTime', '<=', '2024-06-30T23:59:59Z'));
+
+	try {
+
+		const querySnapshot = await getDocs(q);
+		const camposSeleccionados = ['creationTime', 'topicWords'];
+
+		const documents = [];
+		querySnapshot.forEach((doc) => {
+
+			const document = {};
+			camposSeleccionados.forEach((campo) => {
+				document[campo] = doc.data()[campo];
+			});
+			documents.push({
+				id: doc.id,
+				...document
+			});
+		}
+		);
+		let allWords = [];
+        documents.forEach(document => {
+            if (typeof document.topicWords === 'object' && document.topicWords !== null) {
+                const values = Object.values(document.topicWords);
+                const flattenedWords = values.reduce((acc, val) => acc.concat(val), []);
+                allWords = allWords.concat(flattenedWords);
+				document.topicWords = allWords;
+            }
+        });
+		console.log(documents[0]);
+		return documents;
+
+	} catch (error) {
+
+		console.error('Error al obtener documentos:', error);
+		return [];
+	}
+}
 export {
     getMediaResults,
 	getTopicWordsBetweenDates,
 	getDatesForWord,
-	getMostCommonWords
+	getMostCommonWords,
+	getWordByDate
 };
