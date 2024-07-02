@@ -1,130 +1,124 @@
-import { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import './App.css';
-import {
-	getWordByDate,
-} from './firebase';
+import { getWordByDate } from './firebase';
 import { useForm } from './hooks/useForm';
 
 function App() {
-	const [topicWordsData, setTopicWordsData] = useState([]);
-	const [datesForWord, setDatesForWord] = useState([]);
+    const [results, setResults] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [lastDoc, setLastDoc] = useState(null);
+    const pageSize = 5;
+    const {
+        queryWord,
+        queryDateRangeBegin,
+        queryDateRangeEnd,
+        onInputChange,
+        onResetForm,
+    } = useForm({
+        queryWord: '',
+        queryDateRangeBegin: '',
+        queryDateRangeEnd: '',
+    });
 
-	const [results, setResults] = useState([]);
-	const {
-		queryWord,
-		queryDateRangeBegin,
-		queryDateRangeEnd,
-		onInputChange,
-		onResetForm,
-	} = useForm({
-		queryWord: '',
-		queryDateRangeBegin: '',
-		queryDateRangeEnd: '',
-	});
+    const handleSearch = async (e) => {
+        e.preventDefault();
+        setLoading(true);
 
-	const onSearch = (e) => {
-		e.preventDefault();
-		console.log({ queryWord, queryDateRangeBegin, queryDateRangeEnd });
-		getWordByDate(queryWord, queryDateRangeBegin, queryDateRangeEnd).then(
-			setResults
-		);
-		// console.log(results)
-		// onResetForm();
-	};
+        try {
+            const newResults = await getWordByDate(
+                queryWord,
+                queryDateRangeBegin,
+                queryDateRangeEnd,
+                pageSize
+            );
 
-	// useEffect(() => {
-	//     const startDate = new Date('2023-01-01T00:00:00Z');
-	//     const endDate = new Date('2024-06-30T23:59:59Z');
+            setResults(newResults);
+            if (newResults.length > 0) {
+                setLastDoc(newResults[newResults.length - 1].creationTime);
+            }
 
-	//     const fetchTopicWords = async () => {
-	//         try {
-	//             const data = await getTopicWordsBetweenDates(startDate, endDate);
-	//             setTopicWordsData(data);
-	//         } catch (error) {
-	//             console.error('Error fetching documents: ', error);
-	//         }
-	//     };
+        } catch (error) {
+            console.error('Error al buscar:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-	//     fetchTopicWords();
-	// }, []);
+    const loadMore = async () => {
+        setLoading(true);
 
-	// useEffect(() => {
-	// 	const word = 'castillo';
-	// 	const fetchDates = async () => {
-	// 		try {
-	// 			const data = await getDatesForWord(word);
-	// 			setDatesForWord(data);
-	// 		}
-	// 		catch (error) {
-	// 			console.error('Error fetching documents: ', error);
-	// 		}
-	// 	}
-	// 	fetchDates();
-	// }
-	// , []);
-	return (
-		<>
-			<header className="header">
-				<nav className="nav">
-					<div className="nav__container">
-						<h1 className="nav__app-name"> 🎯 TubeTrends</h1>
-					</div>
-				</nav>
-			</header>
-			<main className="main">
-				<div className="main__container">
-					<form className="form">
-						<input
-							type="text"
-							className="form__input"
-							placeholder="s0m3th1ng"
-							name="queryWord"
-							value={queryWord}
-							onChange={onInputChange}
-						/>
-						{/* <input
-							type="date"
-							className="form__date-beg"
-							name="queryDateRangeBegin"
-							id="dateBegin"
-							value={queryDateRangeBegin}
-							onChange={onInputChange}
-						/>
-						<input
-							type="date"
-							className="form__date-end"
-							name="queryDateRangeEnd"
-							id="dateEnd"
-							value={queryDateRangeEnd}
-							onChange={onInputChange}
-						/> */}
-						<button className="form__button" onClick={onSearch}>
-							🔎
-						</button>
-					</form>
-				</div>
-				<section className="results">
-					<p className="results__title">
-						Resultados <span className="results__num">{results.length}</span>{' '}
-					</p>
-					<ul className="results__list">
+        try {
+            const newResults = await getWordByDate(
+                queryWord,
+                queryDateRangeBegin,
+                queryDateRangeEnd,
+                pageSize,
+                lastDoc
+            );
 
-						{
-							results.map(result => (
-							<li className="result" key={result.id}>
-								<p className="result__date"> 📅 {result.creationTime}</p>
-								<div className="result__words">
-									{result.topicWords?.map(word => 
-											<p className="result__word">{word}</p>
-									)}
-								</div>
-							</li>
-							))
-						}
-					</ul>
-				</section>
-			</main>
-		</>
-	);
+            setResults([...results, ...newResults]);
+            if (newResults.length > 0) {
+                setLastDoc(newResults[newResults.length - 1].creationTime);
+            }
+
+        } catch (error) {
+            console.error('Error al cargar más resultados:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <>
+            <header className="header">
+                <nav className="nav">
+                    <div className="nav__container">
+                        <h1 className="nav__app-name">🎯 TubeTrends</h1>
+                    </div>
+                </nav>
+            </header>
+            <main className="main">
+                <div className="main__container">
+                    <form className="form" onSubmit={handleSearch}>
+                        <input
+                            type="text"
+                            className="form__input"
+                            placeholder="s0m3th1ng"
+                            name="queryWord"
+                            value={queryWord}
+                            onChange={onInputChange}
+                        />
+                        <button className="form__button" type="submit">
+                            🔎
+                        </button>
+                    </form>
+                </div>
+                <section className="results">
+                    <p className="results__title">
+                        Resultados <span className="results__num">{results.length}</span>
+                    </p>
+                    <ul className="results__list">
+                        {results.map((result, index) => (
+                            <li className="result" key={index}>
+                                <p className="result__date">📅 {result.creationTime}</p>
+                                <div className="result__words">
+                                    {result.topicWords.map((word, idx) => (
+                                        <p className="result__word" key={idx}>{word}</p>
+                                    ))}
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                    {loading && <p>Cargando...</p>}
+                    {results.length > 0 && !loading && (
+                        <button className="form__button" onClick={loadMore}>
+                            Cargar más
+                        </button>
+                    )}
+                </section>
+            </main>
+        </>
+    );
 }
+
 export default App;
